@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+gpt4free
+requests
+g4f

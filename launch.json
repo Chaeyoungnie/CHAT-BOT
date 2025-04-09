@@ -1,0 +1,13 @@
+{
+  "type": "python",
+  "request": "launch",
+  "name": "FastAPI: Uvicorn",
+  "program": "${GPT-CHATBOT}/main.py", 
+  "args": [
+    "run", "main:app", "--reload"
+  ],
+  "env": {
+    "PYTHONPATH": "${GPT-CHATBOT}"
+  },
+  "console": "integratedTerminal"
+}
