@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from g4f.client import Client
 import uvicorn
 import os
+import asyncio
 
 # Initialize FastAPI application
 app = FastAPI()
@@ -28,6 +29,16 @@ app.add_middleware(
     allow_headers=["*"],    # Allow all headers
 )
 
+# Async function to handle the blocking chatbot call
+async def get_chatbot_response(user_message: str):
+    loop = asyncio.get_event_loop()
+    # This runs the blocking chatbot API call in a separate thread
+    return await loop.run_in_executor(None, lambda: chatbot.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": user_message}],
+        web_search=False
+    ))
+
 @app.get("/")
 async def root():
     return {"message": "Chatbot backend is running!"}
@@ -43,12 +54,8 @@ async def chat(request: Request):
         if not user_message:
             return JSONResponse(content={"error": "No message provided"}, status_code=400)
 
-        # Get the bot response from the chatbot
-        response = chatbot.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": user_message}],
-            web_search=False
-        )
+        # Get the bot response from the chatbot using async function
+        response = await get_chatbot_response(user_message)
 
         # Check if the response has choices and return the first choice's content
         if hasattr(response, "choices") and response.choices:
