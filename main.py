@@ -1,4 +1,5 @@
 import json
+import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +7,9 @@ from g4f.client import Client
 import uvicorn
 import os
 import asyncio
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
 # Initialize FastAPI application
 app = FastAPI()
@@ -34,7 +38,7 @@ async def get_chatbot_response(user_message: str):
     loop = asyncio.get_event_loop()
     # This runs the blocking chatbot API call in a separate thread
     return await loop.run_in_executor(None, lambda: chatbot.chat.completions.create(
-        model="gpt-4o-turbo",
+        model="gpt-4-turbo",  # Verify if gpt-4-turbo is a valid model name
         messages=[{"role": "user", "content": user_message}],
         web_search=False
     ))
@@ -67,8 +71,9 @@ async def chat(request: Request):
         return JSONResponse(content={"response": bot_response})
 
     except Exception as e:
+        logging.error(f"Error processing message: {e}")
         # Return error message if an exception occurs
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        return JSONResponse(content={"error": "Internal server error", "details": str(e)}, status_code=500)
 
 # To run the application with Uvicorn
 if __name__ == "__main__":
