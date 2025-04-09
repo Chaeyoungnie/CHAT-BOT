@@ -34,7 +34,7 @@ async def get_chatbot_response(user_message: str):
     loop = asyncio.get_event_loop()
     # This runs the blocking chatbot API call in a separate thread
     return await loop.run_in_executor(None, lambda: chatbot.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4o-turbo",
         messages=[{"role": "user", "content": user_message}],
         web_search=False
     ))
