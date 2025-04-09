@@ -45,7 +45,7 @@ async def chat(request: Request):
 
         # Get the bot response from the chatbot
         response = chatbot.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-turbo",
             messages=[{"role": "user", "content": user_message}],
             web_search=False
         )
