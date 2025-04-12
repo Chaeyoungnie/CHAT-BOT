@@ -2,10 +2,16 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from g4f.client import Client
+from emotion_model import load_emotion_model, predict_emotion
+from typing import List
 import uvicorn
 
 app = FastAPI()
 chatbot = Client()
+emotion_model, emotion_tokenizer = load_emotion_model()
+
+# Simulated memory per session (in-memory for now)
+conversation_history: List[dict] = []
 
 origins = [
     "http://localhost:5501",
@@ -27,47 +33,47 @@ async def root():
 
 @app.post("/chat")
 async def chat(request: Request):
-    body = await request.json()
-    user_message = body.get("message")
+    global conversation_history
 
-    if not user_message:
-        return JSONResponse(content={"error": "No message provided"}, status_code=400)
+    try:
+        body = await request.json()
+        user_message = body.get("message")
 
-    response = chatbot.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": user_message}],
-        web_search=False
-    )
+        if not user_message:
+            return JSONResponse(content={"error": "No message provided"}, status_code=400)
 
-    if hasattr(response, "choices") and response.choices:
-        bot_response = response.choices[0].message.content
-    else:
-        bot_response = "Sorry, I couldn't generate a response."
+        # Detect emotion
+        emotion = predict_emotion(user_message, emotion_model, emotion_tokenizer)
 
-    return JSONResponse(content={"response": bot_response})
+        # Add the user message to conversation history
+        conversation_history.append({"role": "user", "content": user_message})
 
-@app.post("/generate-topic")
-async def generate_topic(request: Request):
-    body = await request.json()
-    user_message = body.get("message")
+        # Maintain the last 6 messages (user + bot)
+        conversation_history = conversation_history[-6:]
 
-    if not user_message:
-        return JSONResponse(content={"error": "No message provided"}, status_code=400)
+        # Add a system prompt only once (at the beginning)
+        messages = [
+            {"role": "system", "content": f"You are a compassionate mental health assistant. Speak in a natural, human tone. Be empathetic and contextual."},
+            *conversation_history
+        ]
 
-    prompt = f"Generate a short, clear topic title based on this message: \"{user_message}\""
+        # Get response
+        response = chatbot.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            web_search=False
+        )
 
-    response = chatbot.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        web_search=False
-    )
+        bot_response = response.choices[0].message.content if hasattr(response, "choices") and response.choices else "Sorry, I couldn't generate a response."
 
-    if hasattr(response, "choices") and response.choices:
-        topic_title = response.choices[0].message.content.strip()
-    else:
-        topic_title = "Untitled Topic"
+        # Add bot reply to history
+        conversation_history.append({"role": "assistant", "content": bot_response})
 
-    return JSONResponse(content={"topic": topic_title})
+        return JSONResponse(content={"emotion": emotion, "response": bot_response})
+
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
