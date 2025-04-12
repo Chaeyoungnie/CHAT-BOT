@@ -2,14 +2,12 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from g4f.client import Client
-from emotion_model import load_emotion_model, predict_emotion
 from typing import List
 import uvicorn
 
 
 app = FastAPI()
 chatbot = Client()
-emotion_model, emotion_tokenizer = load_emotion_model()
 
 # Simulated memory per session (in-memory for now)
 conversation_history: List[dict] = []
@@ -44,7 +42,6 @@ async def chat(request: Request):
             return JSONResponse(content={"error": "No message provided"}, status_code=400)
 
         # Detect emotion
-        emotion = predict_emotion(user_message, emotion_model, emotion_tokenizer)
 
         # Add the user message to conversation history
         conversation_history.append({"role": "user", "content": user_message})
@@ -70,7 +67,6 @@ async def chat(request: Request):
         # Add bot reply to history
         conversation_history.append({"role": "assistant", "content": bot_response})
 
-        return JSONResponse(content={"emotion": emotion, "response": bot_response})
 
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
