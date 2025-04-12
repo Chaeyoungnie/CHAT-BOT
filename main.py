@@ -1,21 +1,24 @@
-import json
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from g4f.client import Client
-import uvicorn
-import os
+from emotion_model import load_emotion_model, predict_emotion  # Import emotion prediction functions
 
-# Initialize FastAPI application
+import uvicorn
+
+# Initialize FastAPI app
 app = FastAPI()
+
+# Load the emotion model and tokenizer
+emotion_model, emotion_tokenizer = load_emotion_model()
 
 # Initialize chatbot client
 chatbot = Client()
 
 # Configure allowed origins (you can add your frontend domain here for production)
 origins = [
-    "http://localhost:5501",           # Local dev
-    "http://127.0.0.1:5501",           # Local dev
+    "http://localhost:5501",  # Local dev
+    "http://127.0.0.1:5501",  # Local dev
     "https://uplift-sia.web.app"  # Replace with your actual frontend domain
 ]
 
@@ -43,10 +46,14 @@ async def chat(request: Request):
         if not user_message:
             return JSONResponse(content={"error": "No message provided"}, status_code=400)
 
-        # Get the bot response from the chatbot
+        # Predict emotion
+        emotion = predict_emotion(user_message, emotion_model, emotion_tokenizer)
+
+        # Generate chatbot response based on emotion and user message
+        chatbot_prompt = f"As a mental health assistant, respond empathetically to the following message: {user_message} (Emotion detected: {emotion})"
         response = chatbot.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": user_message}],
+            messages=[{"role": "user", "content": chatbot_prompt}],
             web_search=False
         )
 
@@ -56,8 +63,8 @@ async def chat(request: Request):
         else:
             bot_response = "Sorry, I couldn't generate a response."
 
-        # Return the bot response as JSON
-        return JSONResponse(content={"response": bot_response})
+        # Return the bot response as JSON along with emotion
+        return JSONResponse(content={"emotion": emotion, "response": bot_response})
 
     except Exception as e:
         # Return error message if an exception occurs
@@ -65,5 +72,4 @@ async def chat(request: Request):
 
 # To run the application with Uvicorn
 if __name__ == "__main__":
-    # Running with uvicorn for production
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
