@@ -6,6 +6,7 @@ from emotion_model import load_emotion_model, predict_emotion
 from typing import List
 import uvicorn
 
+
 app = FastAPI()
 chatbot = Client()
 emotion_model, emotion_tokenizer = load_emotion_model()
