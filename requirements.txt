@@ -1,6 +1,4 @@
-fastapi
-uvicorn
-gpt4free
-requests
-g4f
-
+fastapi==0.95.1
+uvicorn==0.22.0
+httpx==0.24.0
+requests==2.28.2
