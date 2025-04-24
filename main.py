@@ -12,14 +12,14 @@ app = FastAPI()
 # Initialize chatbot client
 chatbot = Client()
 
-# Configure allowed origins (you can add your frontend domain here for production)
+# Configure allowed origins (add the frontend origin explicitly)
 origins = [
     "http://localhost:5501",           # Local dev
     "http://127.0.0.1:5501",           # Local dev
     "https://uplift-sia.web.app"       # Your deployed frontend domain
 ]
 
-# CORS setup
+# Update CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,  # Allow requests from the frontend
@@ -27,6 +27,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/")
 async def root():
