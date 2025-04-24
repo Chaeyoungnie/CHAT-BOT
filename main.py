@@ -1,10 +1,8 @@
-import json
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from g4f.client import Client
 import uvicorn
-import os
 
 # Initialize FastAPI application
 app = FastAPI()
@@ -12,22 +10,21 @@ app = FastAPI()
 # Initialize chatbot client
 chatbot = Client()
 
-# Configure allowed origins (add the frontend origin explicitly)
+# Allowed origins
 origins = [
     "http://localhost:5501",           # Local dev
     "http://127.0.0.1:5501",           # Local dev
     "https://uplift-sia.web.app"       # Your deployed frontend domain
 ]
 
-# Update CORS middleware
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # Allow requests from the frontend
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 @app.get("/")
 async def root():
@@ -67,7 +64,6 @@ async def generate_topic(request: Request):
         if not message:
             return JSONResponse(content={"error": "No message provided"}, status_code=400)
 
-        # Prompt to generate a topic title from the user's first message
         prompt = f"Generate a short and clear topic title summarizing the user's message: \"{message}\""
 
         response = chatbot.chat.completions.create(
