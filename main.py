@@ -63,7 +63,7 @@ async def chat(request: Request):
         return JSONResponse(content={"response": bot_response})
 
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        return JSONResponse(content={"error": f"An error occurred: {str(e)}"}, status_code=500)
 
 @app.post("/generate-topic")
 async def generate_topic(request: Request):
