@@ -1,28 +1,24 @@
-import json
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from g4f.client import Client
-import uvicorn
 import os
+import httpx
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-# Initialize FastAPI application
 app = FastAPI()
 
-# Initialize chatbot client
-chatbot = Client()
+# Set your OpenRouter API key
+OPENROUTER_API_KEY = "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"
 
-# Configure allowed origins (you can add your frontend domain here for production)
+# CORS settings
 origins = [
-    "http://localhost:5501",           # Local dev
-    "http://127.0.0.1:5501",           # Local dev
-    "https://uplift-sia.web.app"       # Your deployed frontend domain
+    "http://localhost:5501",
+    "http://127.0.0.1:5501",
+    "https://uplift-sia.web.app"
 ]
 
-# CORS setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # Allow requests from the frontend
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,17 +37,28 @@ async def chat(request: Request):
         if not user_message:
             return JSONResponse(content={"error": "No message provided"}, status_code=400)
 
-        response = chatbot.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": user_message}],
-            web_search=False
-        )
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json"
+        }
 
-        if hasattr(response, "choices") and response.choices:
-            bot_response = response.choices[0].message.content
-        else:
-            bot_response = "Sorry, I couldn't generate a response."
+        payload = {
+            "model": "openai/gpt-4o",
+            "messages": [
+                {"role": "system", "content": "You are a compassionate and empathetic mental health support assistant."},
+                {"role": "user", "content": user_message}
+            ],
+            "max_tokens": 500  # Important: stays within free quota
+        }
 
+        async with httpx.AsyncClient() as client:
+            response = await client.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
+            data = response.json()
+
+        if "choices" not in data:
+            return JSONResponse(content={"error": "Invalid response format from OpenRouter"}, status_code=500)
+
+        bot_response = data["choices"][0]["message"]["content"]
         return JSONResponse(content={"response": bot_response})
 
     except Exception as e:
@@ -66,24 +73,33 @@ async def generate_topic(request: Request):
         if not message:
             return JSONResponse(content={"error": "No message provided"}, status_code=400)
 
-        # Prompt to generate a topic title from the user's first message
         prompt = f"Generate a short and clear topic title summarizing the user's message: \"{message}\""
 
-        response = chatbot.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            web_search=False
-        )
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json"
+        }
 
-        if hasattr(response, "choices") and response.choices:
-            topic = response.choices[0].message.content.strip()
-        else:
-            topic = "General Conversation"
+        payload = {
+            "model": "openai/gpt-3.5",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 50  # Very short output for a topic title
+        }
 
+        async with httpx.AsyncClient() as client:
+            response = await client.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
+            data = response.json()
+
+        if "choices" not in data:
+            return JSONResponse(content={"error": "Invalid response format from OpenRouter"}, status_code=500)
+
+        topic = data["choices"][0]["message"]["content"].strip()
         return JSONResponse(content={"topic": topic})
 
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
